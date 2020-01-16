@@ -8,6 +8,7 @@ export interface ResourceAction {
     dispatchString: string;
     commitString: string;
     axios: AxiosInstance;
+    defaultState: object;
 }
 export interface ResourceActionMap {
     [action: string]: ResourceAction;
@@ -22,6 +23,7 @@ export interface ShorthandResourceActionOptions {
     requestConfig?: Object;
     queryParams?: Boolean;
     headers?: Function | Object;
+    defaultState?: Object | Array<any>;
 }
 export interface ResourceActionOptions extends ShorthandResourceActionOptions {
     method: string;
@@ -42,7 +44,7 @@ export declare class Resource {
     constructor(options: ResourceOptions);
     add(options: ResourceActionOptions): Resource;
     private getHeadersFn;
-    private readonly normalizedBaseURL;
+    private get normalizedBaseURL();
     private getDispatchString;
     private getCommitString;
 }

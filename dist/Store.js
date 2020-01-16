@@ -41,6 +41,8 @@ var StoreCreator = /** @class */ (function () {
     function StoreCreator(resource, options) {
         this.successSuffix = "SUCCEEDED";
         this.errorSuffix = "FAILED";
+        this.promiseSuffix = "PROMISE";
+        this.resetSuffix = "RESET";
         this.resource = resource;
         this.options = Object.assign({
             createStateFn: false
@@ -59,7 +61,9 @@ var StoreCreator = /** @class */ (function () {
         var resourceState = cloneDeep(this.resource.state);
         var state = Object.assign({
             pending: {},
-            error: {}
+            error: {},
+            promises: {},
+            loaded: {}
         }, resourceState);
         var actions = this.resource.actions;
         Object.keys(actions).forEach(function (action) {
@@ -69,11 +73,16 @@ var StoreCreator = /** @class */ (function () {
                 return;
             }
             // if state is undefined set default value to null
-            if (state[property] === undefined) {
+            if (state[property] === undefined && actions[action].defaultState !== null) {
+                state[property] = cloneDeep(actions[action].defaultState);
+            }
+            else if (state[property] === undefined) {
                 state[property] = null;
             }
             state["pending"][property] = false;
+            state["loaded"][property] = false;
             state["error"][property] = null;
+            state["promises"][property] = null;
         });
         return state;
     };
@@ -83,7 +92,9 @@ var StoreCreator = /** @class */ (function () {
             var resourceState = cloneDeep(_this.resource.state);
             var state = Object.assign({
                 pending: {},
-                error: {}
+                error: {},
+                promises: {},
+                loaded: {}
             }, resourceState);
             var actions = _this.resource.actions;
             Object.keys(actions).forEach(function (action) {
@@ -92,12 +103,17 @@ var StoreCreator = /** @class */ (function () {
                 if (property === null) {
                     return;
                 }
-                // if state is undefined set default value to null
-                if (state[property] === undefined) {
+                // if state is undefined set defaultState or default value to null
+                if (state[property] === undefined && actions[action].defaultState !== null) {
+                    state[property] = cloneDeep(actions[action].defaultState);
+                }
+                else if (state[property] === undefined) {
                     state[property] = null;
                 }
                 state["pending"][property] = false;
+                state["loaded"][property] = false;
                 state["error"][property] = null;
+                state["promises"][property] = null;
             });
             return state;
         };
@@ -125,6 +141,7 @@ var StoreCreator = /** @class */ (function () {
                 if (property !== null) {
                     state.pending[property] = false;
                     state.error[property] = null;
+                    state.loaded[property] = true;
                 }
                 if (onSuccess) {
                     onSuccess(state, payload, axios, actionParams);
@@ -147,6 +164,17 @@ var StoreCreator = /** @class */ (function () {
                     state[property] = defaultState[property];
                 }
             };
+            mutations[commitString + "_" + _this.promiseSuffix] = function (state, _a) {
+                var payload = _a.payload;
+                if (property !== null) {
+                    state.promises[property] = payload;
+                }
+            };
+            if (actions[action].defaultState !== null) {
+                mutations[commitString + "_" + _this.resetSuffix] = function (state) {
+                    state[property] = cloneDeep(actions[action].defaultState);
+                };
+            }
         });
         return mutations;
     };
@@ -160,6 +188,7 @@ var StoreCreator = /** @class */ (function () {
                 var commit = _a.commit;
                 if (actionParams === void 0) { actionParams = { params: {}, data: {} }; }
                 return __awaiter(_this, void 0, void 0, function () {
+                    var promise;
                     var _this = this;
                     return __generator(this, function (_b) {
                         if (!actionParams.params)
@@ -167,18 +196,24 @@ var StoreCreator = /** @class */ (function () {
                         if (!actionParams.data)
                             actionParams.data = {};
                         commit(commitString, actionParams);
-                        return [2 /*return*/, requestFn(actionParams.params, actionParams.data)
+                        promise = new Promise(function (resolve, reject) {
+                            requestFn(actionParams.params, actionParams.data)
                                 .then(function (response) {
                                 commit(commitString + "_" + _this.successSuffix, {
                                     payload: response, actionParams: actionParams
                                 });
-                                return Promise.resolve(response);
+                                resolve(response);
                             }, function (error) {
                                 commit(commitString + "_" + _this.errorSuffix, {
                                     payload: error, actionParams: actionParams
                                 });
-                                return Promise.reject(error);
-                            })];
+                                reject(error);
+                            });
+                        });
+                        commit(commitString + "_" + this.promiseSuffix, {
+                            payload: promise
+                        });
+                        return [2 /*return*/, promise];
                     });
                 });
             };

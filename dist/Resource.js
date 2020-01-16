@@ -74,7 +74,8 @@ var Resource = /** @class */ (function () {
             onError: options.onError,
             dispatchString: this.getDispatchString(options.action),
             commitString: this.getCommitString(options.action),
-            axios: this.axios
+            axios: this.axios,
+            defaultState: options.defaultState || null
         };
         return this;
     };

@@ -9,6 +9,7 @@ export interface ResourceAction {
   dispatchString: string,
   commitString: string,
   axios: AxiosInstance,
+  defaultState: object
 }
 
 export interface ResourceActionMap {
@@ -25,6 +26,7 @@ export interface ShorthandResourceActionOptions {
   requestConfig?: Object
   queryParams?: Boolean
   headers?: Function | Object
+  defaultState?: Object | Array<any>
 }
 
 export interface ResourceActionOptions extends ShorthandResourceActionOptions {
@@ -118,7 +120,8 @@ export class Resource {
       onError: options.onError,
       dispatchString: this.getDispatchString(options.action),
       commitString: this.getCommitString(options.action),
-      axios: this.axios
+      axios: this.axios,
+      defaultState: options.defaultState || null
     }
 
     return this
